@@ -7,8 +7,12 @@ from prefect_gcp.bigquery import bigquery_load_file
 from kafka import KafkaConsumer
 
 import pandas as pd
+from datetime import datetime as dt
 
 import json
+
+ARCHIVE_PATH = '/home/pi/python/weather-station-consumer/data/archive'
+LIVE_PATH = '/home/pi/python/weather-station-consumer/data/weather-station-live.csv'
 
 def wind_direction(r):
     '''
@@ -18,19 +22,19 @@ def wind_direction(r):
 
     if r <= 200:
         return 'E'
-    elif r > 200 & r <= 300:
+    elif 200 < r <= 300:
         return 'SE'
-    elif r > 300 & r <= 440:
+    elif 300 < r <= 440:
         return 'S'
-    elif r > 440 & r <= 750:
+    elif 440 < r <= 750:
         return 'NE'
-    elif r > 750 & r <= 1380:
+    elif 750 < r <= 1380:
         return 'SW'
-    elif r > 1380 & r <= 2850:
+    elif 1380 < r <= 2850:
         return 'N'
-    elif r > 2850 & r <= 5000:
+    elif 2850 < r <= 5000:
         return 'NE'
-    elif r > 5000 & r <= 10000:
+    elif 5000 < r <= 10000:
         return 'E'
 
 def c_to_f(c):
@@ -42,6 +46,7 @@ def process_data(df):
 
     df['datetime'] = pd.to_datetime(df['datetime'], unit='s')
     df['temperature'] = df['temperature'].apply(lambda x: c_to_f(x))
+    df['wind_direction_raw'] = df['wind_direction'].copy()
     df['wind_direction'] = df['wind_direction'].apply(lambda x: wind_direction(x))
 
     return df
@@ -76,11 +81,12 @@ def main_flow():
             rain = message.value['rain']
             wind = message.value['wind']
             wind_direction = message.value['wind_direction']
+            wind_direction_raw = message.value['wind_direction']
             temperature = message.value['tmp_temp']
             pressure = message.value['pressure']
             humidity = message.value['humidity']
 
-            payload = [datetime, rain, wind, wind_direction, temperature, pressure, humidity]
+            payload = [datetime, rain, wind, wind_direction, temperature, pressure, humidity, wind_direction_raw]
 
             temp = pd.DataFrame([payload])
 
@@ -89,7 +95,7 @@ def main_flow():
         logger.error("Error while caching data!!!")
         logger.warning(e)
 
-    df.columns = ['datetime', 'rain', 'wind', 'wind_direction', 'temperature', 'pressure', 'humidity']
+    df.columns = ['datetime', 'rain', 'wind', 'wind_direction', 'temperature', 'pressure', 'humidity', 'wind_direction_raw']
     consumer.close()
 
     logger.info("Processing data...")
@@ -98,6 +104,13 @@ def main_flow():
     except Exception as e:
         logger.error("Error while processing data!!!")
 
+    logger.info('Writing data...')
+    try:
+        df.to_csv(path_or_buf=f'{ARCHIVE_PATH}/{dt.now().strftime("%Y%m")}.csv',index=False, mode='a+', header=False)
+        df.to_csv(path_or_buf=LIVE_PATH,index=False, mode='a+', header=False)
+    except Exception as e:
+        logger.error("Error while writing data!!!")
+        logger.warning(e)
 
 
 if __name__ == "__main__":
