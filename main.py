@@ -7,6 +7,7 @@ from prefect_gcp.bigquery import bigquery_load_file
 from kafka import KafkaConsumer
 
 import pandas as pd
+import numpy as np
 from datetime import datetime as dt
 
 import json
@@ -94,7 +95,8 @@ def weather_station_consumer_flow():
     ## Here we are putting the data into a pandas dataframe for processing.
 
     logger.info("Caching data...")
-    df = pd.DataFrame()
+    columns = ['datetime', 'rain', 'wind', 'wind_direction', 'temperature', 'pressure', 'humidity', 'wind_direction_raw']
+    df = pd.DataFrame(columns=columns)
     try:
         for message in consumer:
             datetime = message.value['datetime']
@@ -122,7 +124,7 @@ def weather_station_consumer_flow():
     consumer.close()
 
     ## Assign column names to dataframe.
-    df.columns = ['datetime', 'rain', 'wind', 'wind_direction', 'temperature', 'pressure', 'humidity', 'wind_direction_raw']
+   
     
 
     logger.info("Processing data...")
