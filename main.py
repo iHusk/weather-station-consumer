@@ -67,7 +67,7 @@ def process_data(df):
 
 
 @flow(task_runner=SequentialTaskRunner)
-def main_flow():
+def weather_station_consumer_flow():
     logger = get_run_logger()
 
     logger.info("Creating Consumer...")
@@ -135,7 +135,7 @@ def main_flow():
     try:
         ## Doing this monthly might be too long...worried about how long it will take to open file?
         df.to_csv(path_or_buf=f'{ARCHIVE_PATH}/{dt.now().strftime("%Y%m")}.csv',index=False, mode='a+', header=False)
-        
+
         ## Append to the live data.
         ## TODO: We should also trim the beginning rows that are older than x days old. Or limit how many lines are in the file? 
         df.to_csv(path_or_buf=LIVE_PATH,index=False, mode='a+', header=False)
@@ -145,4 +145,4 @@ def main_flow():
 
 
 if __name__ == "__main__":
-    main_flow()
+    weather_station_consumer_flow()
