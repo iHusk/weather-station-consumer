@@ -95,8 +95,10 @@ def weather_station_consumer_flow():
     ## Here we are putting the data into a pandas dataframe for processing.
 
     logger.info("Caching data...")
+
     columns = ['datetime', 'rain', 'wind', 'wind_direction', 'temperature', 'pressure', 'humidity', 'wind_direction_raw']
     df = pd.DataFrame(columns=columns)
+    
     try:
         for message in consumer:
             datetime = message.value['datetime']
@@ -121,11 +123,7 @@ def weather_station_consumer_flow():
 
 
     ## Very important!!
-    consumer.close()
-
-    ## Assign column names to dataframe.
-   
-    
+    consumer.close()   
 
     logger.info("Processing data...")
     try:
