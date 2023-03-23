@@ -1,6 +1,6 @@
 /kafka_2.13-3.4.0/
 /data/
-/weather-station-consumer/
+/weather-station-consumer/`
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

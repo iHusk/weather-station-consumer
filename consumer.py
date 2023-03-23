@@ -27,17 +27,27 @@ def wind_dir(r):
     elif 5000 < r <= 10000:
         return 'E'
 
+    
+@task
+def cleanup_kafka(topic_producer):
+    logger = get_run_logger()
+    # dispose the topic(s) and close the stream(s)
+    logger.info("Closing streams...")  # Note the order. Producer should be closed after consumer
+    topic_producer.dispose()  # to avoid receiving data - possibly committing - but not being able to write.
+    logger.info("Closed Streams.")
 
 # Define Prefect task
 @task
 def consume_kafka_and_process():
+    consumed=False
+    i=0
     # Client connecting to Kafka instance locally without authentication. 
     client = qx.KafkaStreamingClient('127.0.0.1:9092')
     bq = bigquery.Client()
 
     # Open the input topic where to consume data from.
     # For testing purposes we remove consumer group and always read from latest data.
-    topic_consumer = client.get_topic_consumer("weather-raw", consumer_group="test", auto_offset_reset=qx.AutoOffsetReset.Latest)
+    topic_consumer = client.get_topic_consumer("weather-raw", consumer_group="scheduled")
 
     # consume streams
     def on_stream_received_handler(stream_received: qx.StreamConsumer):
@@ -71,24 +81,29 @@ def consume_kafka_and_process():
             print(e)
             pass
         
-        print("Writing locally...")
-        with open(w_path, 'a') as f:
-            df.to_csv(f, header=False)
+        # print("Writing locally...")
+        # with open(w_path, 'a') as f:
+        #     df.to_csv(f, header=False)
 
         print("Complete")
+
+        cleanup_kafka(topic_consumer)
+
+        consumed=True
 
     # Hook up events before initiating read to avoid losing out on any data
     topic_consumer.on_stream_received = on_stream_received_handler
 
-    print("Listening to streams. Press CTRL-C to exit.")
-    # Handle graceful exit
-    qx.App.run()
+    # print("Listening to streams. Press CTRL-C to exit.")
+    # # Handle graceful exit
+    # qx.App.run()
 
 
 # Define Prefect flow
 @flow(task_runner=SequentialTaskRunner())
 def weather_station_processing():
     consume_kafka_and_process()
+
 
 # Run Prefect flow
 if __name__ == "__main__":
